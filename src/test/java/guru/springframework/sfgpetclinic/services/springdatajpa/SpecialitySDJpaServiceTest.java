@@ -13,8 +13,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.then;
+import static org.mockito.BDDMockito.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -80,4 +79,42 @@ class SpecialitySDJpaServiceTest {
         then(specialtyRepository).should(times(1)).findById(anyLong());
         then(specialtyRepository).shouldHaveNoMoreInteractions();
     }
+
+    @Test
+    void testThrow() {
+        doThrow(new RuntimeException("Boom")).when(specialtyRepository).delete(any());
+        assertThrows(RuntimeException.class, () -> specialtyRepository.delete((new Speciality())));
+        verify(specialtyRepository).delete(any());
+    }
+
+    @Test
+    void testFindByIdThrows() {
+        given(specialtyRepository.findById(1l)).willThrow(new RuntimeException("Boom"));
+        assertThrows(RuntimeException.class, () -> service.findById(1l));
+        then(specialtyRepository).should().findById(1l);
+    }
+
+    @Test
+    void testDeleteBDD(){
+        willThrow(new RuntimeException("Boom")).given(specialtyRepository).delete(any());
+        assertThrows(RuntimeException.class, () -> specialtyRepository.delete(new Speciality()));
+        then(specialtyRepository).should().delete(any());
+
+    }
+
+    @Test
+    void testSaveLambda() {
+        //given
+        final String MATCH_ME = "MATCH_ME";
+        Speciality speciality = new Speciality();
+        speciality.setDescription(MATCH_ME);
+        Speciality savedSpecialty = new Speciality();
+        savedSpecialty.setId(1l);
+        given(specialtyRepository.save(argThat(arg -> arg.getDescription().equals(MATCH_ME)))).willReturn(savedSpecialty);
+        //when
+        Speciality returnedSpecialty = service.save(speciality);
+        //then
+        assertThat(returnedSpecialty.getId()).isEqualTo(1l);
+    }
+
 }
